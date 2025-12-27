@@ -10,6 +10,11 @@ public final class MysqlStorage extends SqlStorage {
     }
 
     @Override
+    protected boolean isMysql() {
+        return true;
+    }
+
+    @Override
     protected HikariConfig buildConfig() {
         String host = plugin.getConfig().getString("storage.mysql.host", "127.0.0.1");
         int port = plugin.getConfig().getInt("storage.mysql.port", 3306);

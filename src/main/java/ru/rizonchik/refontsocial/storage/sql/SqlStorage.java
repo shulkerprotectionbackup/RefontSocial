@@ -23,6 +23,10 @@ public abstract class SqlStorage implements Storage {
 
     protected abstract HikariConfig buildConfig();
 
+    protected boolean isMysql() {
+        return false;
+    }
+
     @Override
     public void init() {
         HikariConfig cfg = buildConfig();
@@ -30,15 +34,20 @@ public abstract class SqlStorage implements Storage {
 
         try (Connection c = ds.getConnection()) {
             try (Statement st = c.createStatement()) {
+
+                // players
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS rs_players (" +
                         "uuid VARCHAR(36) PRIMARY KEY," +
                         "name VARCHAR(16) NULL," +
                         "likes INT NOT NULL DEFAULT 0," +
                         "dislikes INT NOT NULL DEFAULT 0," +
                         "score DOUBLE NOT NULL DEFAULT 5.0," +
-                        "updated BIGINT NOT NULL DEFAULT 0" +
+                        "updated BIGINT NOT NULL DEFAULT 0," +
+                        "seen INT NOT NULL DEFAULT 0," +
+                        "ip_hash VARCHAR(64) NULL" +
                         ")");
 
+                // votes (state)
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS rs_votes (" +
                         "voter VARCHAR(36) NOT NULL," +
                         "target VARCHAR(36) NOT NULL," +
@@ -48,8 +57,13 @@ public abstract class SqlStorage implements Storage {
                         "PRIMARY KEY (voter, target)" +
                         ")");
 
+                // vote log
+                String voteLogId = isMysql()
+                        ? "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,"
+                        : "id INTEGER PRIMARY KEY AUTOINCREMENT,";
+
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS rs_vote_log (" +
-                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        voteLogId +
                         "target VARCHAR(36) NOT NULL," +
                         "voter VARCHAR(36) NULL," +
                         "voter_name VARCHAR(16) NULL," +
@@ -58,6 +72,7 @@ public abstract class SqlStorage implements Storage {
                         "time BIGINT NOT NULL" +
                         ")");
 
+                // tags
                 st.executeUpdate("CREATE TABLE IF NOT EXISTS rs_tags (" +
                         "target VARCHAR(36) NOT NULL," +
                         "tag VARCHAR(64) NOT NULL," +
@@ -65,6 +80,7 @@ public abstract class SqlStorage implements Storage {
                         "PRIMARY KEY (target, tag)" +
                         ")");
 
+                // backward-compat
                 try {
                     st.executeUpdate("ALTER TABLE rs_players ADD COLUMN seen INT NOT NULL DEFAULT 0");
                 } catch (SQLException ignored) {
@@ -74,26 +90,11 @@ public abstract class SqlStorage implements Storage {
                 } catch (SQLException ignored) {
                 }
 
-                try {
-                    st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_rs_players_score ON rs_players(score)");
-                } catch (SQLException ignored) {
-                }
-                try {
-                    st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_rs_players_seen_score ON rs_players(seen, score)");
-                } catch (SQLException ignored) {
-                }
-                try {
-                    st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_rs_votes_voter_time ON rs_votes(voter, last_time)");
-                } catch (SQLException ignored) {
-                }
-                try {
-                    st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_rs_vote_log_target_time ON rs_vote_log(target, time)");
-                } catch (SQLException ignored) {
-                }
-                try {
-                    st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_rs_tags_target_count ON rs_tags(target, count)");
-                } catch (SQLException ignored) {
-                }
+                try { st.executeUpdate("CREATE INDEX idx_rs_players_score ON rs_players(score)"); } catch (SQLException ignored) {}
+                try { st.executeUpdate("CREATE INDEX idx_rs_players_seen_score ON rs_players(seen, score)"); } catch (SQLException ignored) {}
+                try { st.executeUpdate("CREATE INDEX idx_rs_votes_voter_time ON rs_votes(voter, last_time)"); } catch (SQLException ignored) {}
+                try { st.executeUpdate("CREATE INDEX idx_rs_vote_log_target_time ON rs_vote_log(target, time)"); } catch (SQLException ignored) {}
+                try { st.executeUpdate("CREATE INDEX idx_rs_tags_target_count ON rs_tags(target, count)"); } catch (SQLException ignored) {}
 
                 try {
                     st.executeUpdate("UPDATE rs_players SET seen=1 WHERE (likes+dislikes) > 0");
@@ -544,8 +545,13 @@ public abstract class SqlStorage implements Storage {
             ps.setInt(3, Math.max(0, delta));
             ps.executeUpdate();
         } catch (SQLException ex) {
+
+            String clamp = isMysql()
+                    ? "GREATEST(count+?, 0)"
+                    : "MAX(count+?, 0)";
+
             try (PreparedStatement ps = c.prepareStatement(
-                    "UPDATE rs_tags SET count=MAX(count+?, 0) WHERE target=? AND tag=?")) {
+                    "UPDATE rs_tags SET count=" + clamp + " WHERE target=? AND tag=?")) {
                 ps.setInt(1, delta);
                 ps.setString(2, target.toString());
                 ps.setString(3, tag);

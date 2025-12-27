@@ -12,6 +12,11 @@ public final class SqliteStorage extends SqlStorage {
     }
 
     @Override
+    protected boolean isMysql() {
+        return false;
+    }
+
+    @Override
     protected HikariConfig buildConfig() {
         String fileName = plugin.getConfig().getString("storage.sqlite.file", "data.db");
         File file = new File(plugin.getDataFolder(), fileName);
