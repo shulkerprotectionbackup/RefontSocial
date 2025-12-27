@@ -289,7 +289,17 @@ public final class YamlStorage implements Storage {
             int value = yaml.getInt(p + ".value", 1);
             String reason = yaml.getString(p + ".reason", null);
             long time = yaml.getLong(p + ".time", 0L);
-            String voterName = includeVoterName ? yaml.getString(p + ".voterName", null) : null;
+
+            String voterName = null;
+            if (includeVoterName) {
+                voterName = yaml.getString(p + ".voterName", null);
+                if (voterName == null) {
+                    String voterUuid = yaml.getString(p + ".voter", null);
+                    if (voterUuid != null) {
+                        voterName = yaml.getString("players." + voterUuid + ".name", null);
+                    }
+                }
+            }
 
             list.add(new VoteLogEntry(time, value, reason, voterName));
         }
@@ -304,6 +314,11 @@ public final class YamlStorage implements Storage {
         int cur = yaml.getInt(base, 0);
         int next = Math.max(0, cur + delta);
         yaml.set(base, next);
+    }
+
+    @Override
+    public String getIpHash(UUID uuid) {
+        return yaml.getString("players." + uuid.toString() + ".ipHash", null);
     }
 
     private void addVoteLog(UUID target, UUID voter, String voterName, int value, String reason, long timeMillis) {

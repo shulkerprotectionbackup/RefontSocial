@@ -84,4 +84,4 @@ profile_info:
     material: NAME_TAG
     name: "%reason%"
     lore:
-      - "§7Выбрать тег"
+      - "§7Нажми, чтобы выбрать"

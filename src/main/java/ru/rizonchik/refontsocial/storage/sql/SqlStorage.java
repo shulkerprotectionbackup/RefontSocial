@@ -106,6 +106,21 @@ public abstract class SqlStorage implements Storage {
     }
 
     @Override
+    public String getIpHash(UUID uuid) {
+        try (Connection c = ds.getConnection()) {
+            try (PreparedStatement ps = c.prepareStatement("SELECT ip_hash FROM rs_players WHERE uuid=?")) {
+                ps.setString(1, uuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return rs.getString("ip_hash");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    @Override
     public void close() {
         if (ds != null) {
             ds.close();
@@ -312,11 +327,22 @@ public abstract class SqlStorage implements Storage {
     }
 
     private void insertVoteLog(Connection c, UUID target, UUID voter, String voterName, int value, String reason, long timeMillis) throws SQLException {
+        String resolvedName = voterName;
+
+        if (resolvedName == null && voter != null) {
+            try (PreparedStatement ps = c.prepareStatement("SELECT name FROM rs_players WHERE uuid=?")) {
+                ps.setString(1, voter.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) resolvedName = rs.getString("name");
+                }
+            }
+        }
+
         try (PreparedStatement ps = c.prepareStatement(
                 "INSERT INTO rs_vote_log(target, voter, voter_name, value, reason, time) VALUES (?,?,?,?,?,?)")) {
             ps.setString(1, target.toString());
             ps.setString(2, voter != null ? voter.toString() : null);
-            ps.setString(3, voterName);
+            ps.setString(3, resolvedName);
             ps.setInt(4, value);
             ps.setString(5, reason);
             ps.setLong(6, timeMillis);

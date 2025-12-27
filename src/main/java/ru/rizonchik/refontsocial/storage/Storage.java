@@ -52,4 +52,6 @@ public interface Storage {
     Map<String, Integer> getTopTags(UUID target, int limit);
 
     List<VoteLogEntry> getRecentVotes(UUID target, int limit, boolean includeVoterName);
+
+    String getIpHash(UUID uuid);
 }

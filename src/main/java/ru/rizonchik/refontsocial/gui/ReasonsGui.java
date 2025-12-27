@@ -5,12 +5,14 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import ru.rizonchik.refontsocial.RefontSocial;
 import ru.rizonchik.refontsocial.service.ReputationService;
 import ru.rizonchik.refontsocial.util.Colors;
 import ru.rizonchik.refontsocial.util.ItemUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +45,8 @@ public final class ReasonsGui extends AbstractGui {
 
         ConfigurationSection sec = plugin.getConfig().getConfigurationSection("reasons.tags");
         if (sec != null) {
-            for (String key : sec.getKeys(false)) tagKeys.add(key);
+            tagKeys.addAll(sec.getKeys(false));
+            Collections.sort(tagKeys);
         }
 
         int slot = 0;
@@ -51,7 +54,28 @@ public final class ReasonsGui extends AbstractGui {
             if (slot >= 45) break;
 
             String display = plugin.getConfig().getString("reasons.tags." + key, key);
+
             ItemStack it = ItemUtil.fromGui(plugin, "reason_tag", "%reason%", display);
+
+            if (it == null || it.getType() == Material.AIR) it = new ItemStack(Material.NAME_TAG);
+
+            ItemMeta meta = it.getItemMeta();
+            if (meta != null) {
+                String name = meta.getDisplayName();
+                if (name == null || name.trim().isEmpty() || name.equals(" ")) {
+                    meta.setDisplayName("§f" + display);
+                }
+
+                List<String> lore = meta.getLore();
+                if (lore == null) lore = new ArrayList<>();
+                lore.add("§7Нажми, чтобы выбрать");
+                lore.add("§7Игрок: §f" + targetName);
+                lore.add(like ? "§7Оценка: §aлайк" : "§7Оценка: §cдизлайк");
+                meta.setLore(lore);
+
+                it.setItemMeta(meta);
+            }
+
             inventory.setItem(slot++, it);
         }
 

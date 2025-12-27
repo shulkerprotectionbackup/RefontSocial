@@ -64,17 +64,13 @@ public final class RateGui extends AbstractGui {
 
         if (rawSlot == 11 && type != Material.AIR) {
             player.closeInventory();
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () ->
-                    service.vote(player, target, targetName, true)
-            );
+            service.vote(player, target, targetName, true);
             return;
         }
 
         if (rawSlot == 15 && type != Material.AIR) {
             player.closeInventory();
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () ->
-                    service.vote(player, target, targetName, false)
-            );
+            service.vote(player, target, targetName, false);
         }
     }
 }

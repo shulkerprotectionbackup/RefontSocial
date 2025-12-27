@@ -1,6 +1,7 @@
 package ru.rizonchik.refontsocial;
 
 import org.bukkit.Bukkit;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.rizonchik.refontsocial.command.ReputationCommand;
 import ru.rizonchik.refontsocial.gui.GuiService;
@@ -25,6 +26,8 @@ public final class RefontSocial extends JavaPlugin {
     private GuiService guiService;
     private InteractionTracker interactionTracker;
 
+    private SeenListener seenListener;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -39,13 +42,6 @@ public final class RefontSocial extends JavaPlugin {
             getCommand("reputation").setTabCompleter(cmd);
         }
 
-        getServer().getPluginManager().registerEvents(guiService, this);
-        getServer().getPluginManager().registerEvents(new SeenListener(this), this);
-
-        if (interactionTracker != null) {
-            getServer().getPluginManager().registerEvents(interactionTracker, this);
-        }
-
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new ReputationExpansion(this).register();
             getLogger().info("Hooked into PlaceholderAPI.");
@@ -58,18 +54,33 @@ public final class RefontSocial extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (seenListener != null) {
+            HandlerList.unregisterAll(seenListener);
+            seenListener = null;
+        }
+
         if (interactionTracker != null) {
             interactionTracker.shutdown();
+            HandlerList.unregisterAll(interactionTracker);
+            interactionTracker = null;
         }
+
         if (guiService != null) {
             guiService.shutdown();
+            HandlerList.unregisterAll(guiService);
+            guiService = null;
         }
+
         if (reputationService != null) {
             reputationService.shutdown();
+            reputationService = null;
         }
+
         if (storage != null) {
             storage.close();
+            storage = null;
         }
+
         getLogger().info("Disabled.");
     }
 
@@ -106,18 +117,31 @@ public final class RefontSocial extends JavaPlugin {
         YamlUtil.reloadMessages(this);
         YamlUtil.reloadGui(this);
 
+        if (seenListener != null) {
+            HandlerList.unregisterAll(seenListener);
+            seenListener = null;
+        }
+
         if (interactionTracker != null) {
             interactionTracker.shutdown();
+            HandlerList.unregisterAll(interactionTracker);
             interactionTracker = null;
         }
+
         if (guiService != null) {
             guiService.shutdown();
+            HandlerList.unregisterAll(guiService);
+            guiService = null;
         }
+
         if (reputationService != null) {
             reputationService.shutdown();
+            reputationService = null;
         }
+
         if (storage != null) {
             storage.close();
+            storage = null;
         }
 
         StorageType storageType;
@@ -140,11 +164,51 @@ public final class RefontSocial extends JavaPlugin {
         reputationService = new ReputationService(this, storage);
         guiService = new GuiService(this, reputationService);
 
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) {
+                try {
+                    storage.markSeen(p.getUniqueId(), p.getName(), null);
+                } catch (Throwable ignored) {
+                }
+            }
+        });
+
+        getServer().getPluginManager().registerEvents(guiService, this);
+
+        seenListener = new SeenListener(this);
+        getServer().getPluginManager().registerEvents(seenListener, this);
+
+        Bukkit.getScheduler().runTask(this, () -> {
+            final java.util.List<org.bukkit.entity.Player> online = new java.util.ArrayList<>(Bukkit.getOnlinePlayers());
+
+            Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                String salt = ru.rizonchik.refontsocial.util.SaltStore.getOrCreate(this);
+
+                for (org.bukkit.entity.Player p : online) {
+                    String ip = null;
+                    try {
+                        if (p.getAddress() != null && p.getAddress().getAddress() != null) {
+                            ip = p.getAddress().getAddress().getHostAddress();
+                        }
+                    } catch (Throwable ignored) {
+                    }
+
+                    String ipHash = (ip == null) ? null : ru.rizonchik.refontsocial.util.SecurityUtil.sha256(ip + "|" + salt);
+
+                    try {
+                        storage.markSeen(p.getUniqueId(), p.getName(), ipHash);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            });
+        });
+
         boolean requireInteraction = getConfig().getBoolean("antiAbuse.requireInteraction.enabled", true);
         if (requireInteraction) {
             interactionTracker = new InteractionTracker(this);
             interactionTracker.start();
             reputationService.setInteractionTracker(interactionTracker);
+            getServer().getPluginManager().registerEvents(interactionTracker, this);
         } else {
             reputationService.setInteractionTracker(null);
         }

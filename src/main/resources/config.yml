@@ -22,54 +22,50 @@ storage:
 
 rating:
   scale:
-    min: 0.0
-    max: 5.0
-  defaultScore: 5.0
-  format: "#0.0"
+    min: 0.0 # Минимум шкалы рейтинга
+    max: 5.0 # Максимум шкалы рейтинга
+  defaultScore: 5.0 # Рейтинг без голосов
+  format: "#0.0"    # Формат вывода (в GUI/плейсах)
 
   # SIMPLE_RATIO: быстро скачет на 1-2 голосах
   # BAYESIAN: сглаживает первые голоса (рекомендую)
   algorithm: BAYESIAN
   bayesian:
-    priorVotes: 12 # чем больше, тем стабильнее старт
+    priorVotes: 12 # Чем больше — тем стабильнее рейтинг на старте
 
 antiAbuse:
-  preventSelfVote: true
+  preventSelfVote: true # Запрет накрутки себе
 
-  # Цель должна быть реальной (заходила/онлайн)
   targetEligibility:
-    requireHasPlayedBefore: true  # запрет оценивать ники, которые не были на сервере
-    requireTargetOnline: false    # true = оценка только если цель онлайн
+    requireHasPlayedBefore: true # Нельзя оценивать тех, кто ни разу не заходил
+    requireTargetOnline: false   # true = оценка только если цель онлайн
 
-  # Антинакрутка по IP (осторожно: семьи/один провайдер)
   ipProtection:
-    enabled: false
-    mode: SAME_IP_DENY          # SAME_IP_DENY | SAME_IP_COOLDOWN
-    cooldownSeconds: 86400      # если mode = SAME_IP_COOLDOWN
+    enabled: false # Включить защиту от накрутки с одного IP
+    mode: SAME_IP_DENY # SAME_IP_DENY = запрет, SAME_IP_COOLDOWN = кулдаун
+    cooldownSeconds: 86400 # Кулдаун для SAME_IP_COOLDOWN (в секундах)
 
   cooldowns:
-    voteGlobalSeconds: 20
-    sameTargetSeconds: 600
-    changeVoteSeconds: 1800
+    voteGlobalSeconds: 20  # Пауза между любыми оценками
+    sameTargetSeconds: 600 # Пауза на одного и того же игрока
+    changeVoteSeconds: 1800 # Пауза на смену лайк↔дизлайк
 
   requireInteraction:
     enabled: true
-    radiusBlocks: 7.0
-    requiredSecondsNear: 8
-    interactionValidSeconds: 600
+    radiusBlocks: 100.0  # Радиус в блоках
+    requiredSecondsNear: 8  # Этот параметр больше не используется
+    interactionValidSeconds: 86400  # Сколько действует "контакт"
     taskPeriodTicks: 40
 
   dailyLimit:
     enabled: true
-    maxVotesPerDay: 20
+    maxVotesPerDay: 20 # Лимит оценок в сутки на игрока
 
 reasons:
-  enabled: true
-  # показывать GUI выбора причины после лайка/дизлайка
-  requireReason: false
-  maxReasonLength: 24
+  enabled: true # Включить теги/причины
+  requireReason: false # true = без выбора тега оценка не пройдет
+  maxReasonLength: 24 # Сейчас используется только как лимит (для будущих расширений)
 
-  # готовые теги (ключ -> отображение)
   tags:
     helpful: "§aпомог"
     polite: "§aадекватный"
@@ -81,14 +77,15 @@ reasons:
 
 profile:
   history:
-    enabled: true
+    enabled: true # Показывать историю оценок в профиле
     showVoterNameMode: PERMISSION # ANONYMOUS | PERMISSION | ALWAYS
-    showVoterNamePermission: "refontsocial.admin"
-    limit: 10
-    showVoterName: false # если true — покажет автора (лучше оставить false)
+    showVoterNamePermission: "refontsocial.admin" # Кто видит имена в истории (если PERMISSION)
+    limit: 10 # Сколько записей показывать
+    showVoterName: false # Старый флаг, не используй (оставь false)
+
   topTags:
-    enabled: true
-    limit: 3
+    enabled: true # Показывать топ-теги в профиле
+    limit: 3 # Сколько тегов показывать
 
 gui:
   top:
@@ -115,12 +112,12 @@ gui:
 
 performance:
   cache:
-    enabled: true
-    expireSeconds: 30
+    enabled: true # Кэшировать профили (уменьшает запросы в БД)
+    expireSeconds: 30 # Время жизни кэша
 
 placeholders:
-  notFound: "§7Не найден"
-  topMax: 200
+  notFound: "§7Не найден" # Что возвращать, если плейсхолдер не нашел игрока/место
+  topMax: 200 # Максимальное N для %refontsocial_*_N%
 
 libraries:
   enabled: true
